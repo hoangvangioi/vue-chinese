@@ -37,13 +37,11 @@ module.exports = defineConfig({
     devtool: 'source-map',
     // Thêm biến môi trường cho API URL trong production
     plugins: [
-      // Định nghĩa biến môi trường cho production
+      // Định nghĩa API_URL_BASE như một biến riêng biệt thay vì ghi đè process.env
       new webpack.DefinePlugin({
-        'process.env': {
-          API_URL: JSON.stringify(process.env.NODE_ENV === 'production' 
-            ? 'http://213.180.0.36:47932' // URL API cho production
-            : '')
-        }
+        'process.env.API_URL_BASE': JSON.stringify(
+          process.env.NODE_ENV === 'production' ? 'http://213.180.0.36:47932' : ''
+        )
       })
     ]
   }

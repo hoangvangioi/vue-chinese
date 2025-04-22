@@ -207,9 +207,9 @@ export default {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-                // Xác định URL API dựa vào môi trường
-                const apiUrl = process.env.NODE_ENV === 'production' && process.env.API_URL
-                    ? `${process.env.API_URL}/api/v1/ocr/recognize` 
+                // Xác định URL API dựa vào môi trường với biến API_URL_BASE
+                const apiUrl = process.env.API_URL_BASE
+                    ? `${process.env.API_URL_BASE}/api/v1/ocr/recognize` 
                     : '/api/v1/ocr/recognize';
 
                 const ocrResponse = await fetch(apiUrl, {
