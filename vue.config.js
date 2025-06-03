@@ -4,10 +4,10 @@ const webpack = require('webpack')
 module.exports = defineConfig({
   transpileDependencies: [],
   devServer: {
-    port: 8080,
+    port: 8000,
     proxy: {
       '/api': {
-        target: 'http://213.180.0.36:47932',
+        target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
         pathRewrite: {
@@ -22,7 +22,7 @@ module.exports = defineConfig({
       webSocketURL: {
         hostname: "0.0.0.0",
         pathname: "/ws",
-        port: 8080,
+        port: 8000,
       },
     },
     headers: {
@@ -40,7 +40,7 @@ module.exports = defineConfig({
       // Định nghĩa API_URL_BASE như một biến riêng biệt thay vì ghi đè process.env
       new webpack.DefinePlugin({
         'process.env.API_URL_BASE': JSON.stringify(
-          process.env.NODE_ENV === 'production' ? 'http://213.180.0.36:47932' : ''
+          process.env.NODE_ENV === 'production' ? 'http://localhost:8080' : ''
         )
       })
     ]

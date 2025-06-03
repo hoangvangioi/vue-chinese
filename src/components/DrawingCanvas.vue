@@ -138,16 +138,13 @@ export default {
             // Tạo ảnh sau khi vẽ xong
             this.convertToImage();
             
-            // Chỉ tự động nhận dạng nếu đã vẽ đủ lâu (tránh nhận dạng khi vừa chạm)
-            if (Date.now() - this.lastStrokeTime > 300) {
-                // Chờ 1 chút để đảm bảo ảnh đã được tạo
-                if (this.recognizeTimeout) {
-                    clearTimeout(this.recognizeTimeout);
-                }
-                this.recognizeTimeout = setTimeout(() => {
-                    this.recognizeText();
-                }, 500);
+            // Thêm debounce nhẹ để tránh gửi quá nhiều request
+            if (this.recognizeTimeout) {
+                clearTimeout(this.recognizeTimeout);
             }
+            this.recognizeTimeout = setTimeout(() => {
+                this.recognizeText();
+            }, 100); // Chỉ delay 100ms
         },
 
         clearCanvas() {
@@ -202,15 +199,15 @@ export default {
                 const blob = await response.blob();
 
                 const formData = new FormData();
-                formData.append('file', blob, 'chinese_character.png');
+                formData.append('image', blob, 'chinese_character.png');
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 10000);
 
                 // Xác định URL API dựa vào môi trường với biến API_URL_BASE
                 const apiUrl = process.env.API_URL_BASE
-                    ? `${process.env.API_URL_BASE}/api/v1/ocr/recognize` 
-                    : '/api/v1/ocr/recognize';
+                    ? `${process.env.API_URL_BASE}/api/ocr` 
+                    : '/api/ocr';
 
                 const ocrResponse = await fetch(apiUrl, {
                     method: 'POST',
@@ -227,8 +224,11 @@ export default {
                 }
 
                 const data = await ocrResponse.json();
-                if (data.status === 'success' && data.data.results && data.data.results.length > 0) {
-                    this.ocrResult = data.data.results[0];
+                if (data.status === 'success' && data.data && data.data.length > 0) {
+                    this.ocrResult = {
+                        text: data.data[0].text,
+                        score: data.data[0].confidence
+                    };
                 } else {
                     this.ocrError = 'Không nhận dạng được chữ trong ảnh.';
                 }
