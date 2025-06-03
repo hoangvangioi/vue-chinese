@@ -85,9 +85,10 @@ export default {
             ocrError: null,
             isProcessing: false,
             debugInfo: null,
-            // Thêm một timeout để tránh nhận dạng liên tục khi vẽ
             recognizeTimeout: null,
-            lastStrokeTime: 0
+            lastStrokeTime: 0,
+            isDrawingPaused: false,
+            drawingPauseTimeout: null
         };
     },
 
@@ -109,7 +110,6 @@ export default {
             this.startX = event.offsetX;
             this.startY = event.offsetY;
             this.hasDrawn = true;
-            // Ghi lại thời điểm bắt đầu vẽ
             this.lastStrokeTime = Date.now();
         },
 
@@ -126,8 +126,22 @@ export default {
 
             this.startX = x;
             this.startY = y;
-            // Cập nhật thời gian nét vẽ cuối
+            
             this.lastStrokeTime = Date.now();
+            
+            this.isDrawingPaused = false;
+            
+            if (this.drawingPauseTimeout) {
+                clearTimeout(this.drawingPauseTimeout);
+            }
+            
+            this.drawingPauseTimeout = setTimeout(() => {
+                if (!this.isDrawingPaused) {
+                    this.isDrawingPaused = true;
+                    this.convertToImage();
+                    this.recognizeText();
+                }
+            }, 300);
         },
 
         endDrawingAndRecognize() {
@@ -135,16 +149,9 @@ export default {
             
             this.isDrawing = false;
             
-            // Tạo ảnh sau khi vẽ xong
             this.convertToImage();
             
-            // Thêm debounce nhẹ để tránh gửi quá nhiều request
-            if (this.recognizeTimeout) {
-                clearTimeout(this.recognizeTimeout);
-            }
-            this.recognizeTimeout = setTimeout(() => {
-                this.recognizeText();
-            }, 100); // Chỉ delay 100ms
+            this.recognizeText();
         },
 
         clearCanvas() {
@@ -181,14 +188,17 @@ export default {
         },
 
         manualRecognize() {
-            // Hàm này dùng khi người dùng nhấn nút nhận dạng thủ công
             if (!this.hasDrawn || this.isProcessing) return;
-            this.convertToImage(); // Đảm bảo ảnh mới nhất
+            this.convertToImage();
             this.recognizeText();
         },
 
         async recognizeText() {
             if (!this.downloadURL || this.isProcessing) return;
+
+            if (this.recognizeTimeout) {
+                clearTimeout(this.recognizeTimeout);
+            }
 
             this.isProcessing = true;
             this.ocrResult = null;
@@ -202,9 +212,8 @@ export default {
                 formData.append('image', blob, 'chinese_character.png');
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-                // Xác định URL API dựa vào môi trường với biến API_URL_BASE
                 const apiUrl = process.env.API_URL_BASE
                     ? `${process.env.API_URL_BASE}/api/ocr` 
                     : '/api/ocr';
@@ -212,8 +221,6 @@ export default {
                 const ocrResponse = await fetch(apiUrl, {
                     method: 'POST',
                     body: formData,
-                    headers: {
-                    },
                     signal: controller.signal
                 });
 
@@ -225,10 +232,14 @@ export default {
 
                 const data = await ocrResponse.json();
                 if (data.status === 'success' && data.data && data.data.length > 0) {
-                    this.ocrResult = {
+                    const newResult = {
                         text: data.data[0].text,
                         score: data.data[0].confidence
                     };
+                    
+                    if (!this.ocrResult || newResult.score > this.ocrResult.score) {
+                        this.ocrResult = newResult;
+                    }
                 } else {
                     this.ocrError = 'Không nhận dạng được chữ trong ảnh.';
                 }
